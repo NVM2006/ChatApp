@@ -1,10 +1,8 @@
-/* eslint-disable no-undef */
 import User from "../model/userModel.js";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-dotenv.config();
+import { ENV } from "../lib/env.js";
 
 export const signup = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -49,8 +47,8 @@ export const signup = async (req, res, next) => {
     const userResponse = newUser[0].toObject();
     delete userResponse.password;
 
-    const token = jwt.sign({ userId: newUser[0]._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+    const token = jwt.sign({ userId: newUser[0]._id }, ENV.JWT_SECRET, {
+      expiresIn: ENV.JWT_EXPIRES_IN,
     });
 
     await session.commitTransaction();
@@ -82,8 +80,8 @@ export const signin = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
+    const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
+      expiresIn: ENV.JWT_EXPIRES_IN,
     });
 
     const responseUser = user.toObject();
