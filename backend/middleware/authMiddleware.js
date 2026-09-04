@@ -1,12 +1,12 @@
-import User from "../model/userModel";
+import User from "../model/userModel.js";
 import jwt from "jsonwebtoken";
 import { ENV } from "../lib/env.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
     let token;
-    const authorCode = req.header.authorization;
-    if (authorCode && authorCode.startWith("Bearer")) {
+    const authorCode = req.headers.authorization;
+    if (authorCode && authorCode.startsWith("Bearer")) {
       token = authorCode.split(" ")[1];
     }
 
@@ -15,7 +15,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, ENV.SECRET);
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).select("-password");
 
     if (!user) {
       return res.status(401).json({ message: "Unauthorized" });

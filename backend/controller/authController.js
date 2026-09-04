@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { ENV } from "../lib/env.js";
+import cloudinary from "../lib/cloudinary.js";
 
 export const signup = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -68,7 +69,7 @@ export const signup = async (req, res, next) => {
 export const signin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not exists" });
@@ -84,15 +85,12 @@ export const signin = async (req, res, next) => {
       expiresIn: ENV.JWT_EXPIRES_IN,
     });
 
-    const responseUser = user.toObject();
-    delete responseUser.password;
-
     res.status(200).json({
       success: true,
       message: "User signed in successfully",
       data: {
         token,
-        user: responseUser,
+        user,
       },
     });
   } catch (error) {
@@ -109,6 +107,37 @@ export const signout = async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { profilePic } = req.body;
+
+    if (!profilePic)
+      return res.status(400).json({ message: "Profile pic is required" });
+
+    const userId = req.user._id;
+    const responseUpload = await cloudinary.uploader.upload(profilePic);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        profilePic: responseUpload.secure_url,
+      },
+      { new: true },
+    );
+
+    const responseData = updatedUser.toObject();
+    delete responseData.password;
+
+    res.status(200).json({
+      success: true,
+      message: "Uploaded profile pic",
+      data: { responseData },
     });
   } catch (error) {
     next(error);
