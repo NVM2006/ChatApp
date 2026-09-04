@@ -3,8 +3,8 @@ import { signup, signin, signout } from "../controller/authController.js";
 
 const authRoute = Router();
 
-authRoute.get("/sign-up", signup);
-authRoute.get("/sign-in", signin);
-authRoute.get("/sign-out", signout);
+authRoute.post("/sign-in", signin);
+authRoute.post("/sign-out", signout);
+authRoute.post("/sign-up", signup);
 
 export default authRoute;
