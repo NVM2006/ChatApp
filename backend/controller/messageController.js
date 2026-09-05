@@ -1,34 +1,29 @@
 import Message from "../model/messageModel.js";
-import User from "../model/userModel.js";
 import Conversation from "../model/conversationModel.js";
 
 export const getMessages = async (req, res, next) => {
   try {
     const currentUserId = req.user.id;
-    const partnerId = req.params.id;
+    const partnerId = req.params.partnerId;
 
-    let conversation = await Conversation.findOne({
+    const conversation = await Conversation.findOne({
       participants: { $all: [currentUserId, partnerId] },
-    }).populate("participants", "-password");
+    });
 
-    if (conversation) {
-      res.status(200).json({
+    if (!conversation) {
+      return res.status(200).json({
         success: true,
-        data: conversation,
+        data: [],
       });
     }
 
-    const newConversation = await Conversation.create({
-      participants: [currentUserId, partnerId],
-    });
+    const messages = await Message.find({
+      conversationId: conversation._id,
+    }).sort({ createdAt: 1 });
 
-    const populatedConversation = await Conversation.findById(
-      newConversation._id,
-    ).populate("participants", "-password");
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      data: populatedConversation,
+      data: messages,
     });
   } catch (error) {
     next(error);
@@ -38,7 +33,7 @@ export const getMessages = async (req, res, next) => {
 export const sendMessage = async (req, res, next) => {
   try {
     const currentUserId = req.user.id;
-    const partnerId = req.params.id;
+    const partnerId = req.params.partnerId;
     const { text, image } = req.body;
 
     let conversation = await Conversation.findOne({

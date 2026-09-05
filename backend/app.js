@@ -6,6 +6,7 @@ import path from "path";
 import authRoute from "./routes/authRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import { connectToDB } from "./lib/db.js";
+import conversationRoute from "./routes/conversationRoute.js";
 
 const app = express();
 
@@ -13,10 +14,11 @@ app.use(express.json());
 
 app.use(errorMiddleware);
 
-const ___dirname = path.resolve();
 app.use("/api/auth", authRoute);
 app.use("/api/message", messageRoute);
+app.use("/api/conversation", conversationRoute);
 
+const ___dirname = path.resolve();
 const PORT = ENV.PORT || 5000;
 
 if (ENV.NODE_ENV === "production") {

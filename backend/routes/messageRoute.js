@@ -6,7 +6,7 @@ const messageRoute = Router();
 
 messageRoute.use(authMiddleware);
 
-messageRoute.get("/:conversationId", getMessages);
-messageRoute.post("/:conversationId", sendMessage);
+messageRoute.get("/:partnerId", getMessages);
+messageRoute.post("/:partnerId", sendMessage);
 
 export default messageRoute;

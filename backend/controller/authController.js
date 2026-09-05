@@ -69,7 +69,7 @@ export const signup = async (req, res, next) => {
 export const signin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email }).select("-password");
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({ message: "User not exists" });
@@ -85,12 +85,15 @@ export const signin = async (req, res, next) => {
       expiresIn: ENV.JWT_EXPIRES_IN,
     });
 
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
     res.status(200).json({
       success: true,
       message: "User signed in successfully",
       data: {
         token,
-        user,
+        user: userResponse,
       },
     });
   } catch (error) {

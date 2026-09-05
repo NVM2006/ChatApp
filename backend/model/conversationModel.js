@@ -15,10 +15,6 @@ const conversationSchema = new mongoose.Schema(
       ref: "Message",
     },
 
-    isGroupChat: {
-      type: Boolean,
-      default: false,
-    },
     groupName: {
       type: String,
       trim: true,
