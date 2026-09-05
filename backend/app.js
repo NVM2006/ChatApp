@@ -4,6 +4,7 @@ import { ENV } from "./lib/env.js";
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import path from "path";
 import authRoute from "./routes/authRoute.js";
+import messageRoute from "./routes/messageRoute.js";
 import { connectToDB } from "./lib/db.js";
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(errorMiddleware);
 
 const ___dirname = path.resolve();
 app.use("/api/auth", authRoute);
+app.use("/api/message", messageRoute);
 
 const PORT = ENV.PORT || 5000;
 
