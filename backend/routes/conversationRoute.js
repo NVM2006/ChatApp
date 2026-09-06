@@ -8,8 +8,7 @@ import {
 const conversationRoute = Router();
 conversationRoute.use(authMiddleware);
 
-conversationRoute.get("/", getConversations);
-
 conversationRoute.get("/:partnerId", accessConversation);
+conversationRoute.get("/", getConversations);
 
 export default conversationRoute;
