@@ -52,6 +52,13 @@ export const signup = async (req, res, next) => {
       expiresIn: ENV.JWT_EXPIRES_IN,
     });
 
+    res.cookie("jwt", token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: ENV.NODE_ENV !== "development",
+    });
+
     await session.commitTransaction();
     session.endSession();
     res.status(200).json({
@@ -83,6 +90,13 @@ export const signin = async (req, res, next) => {
 
     const token = jwt.sign({ userId: user._id }, ENV.JWT_SECRET, {
       expiresIn: ENV.JWT_EXPIRES_IN,
+    });
+
+    res.cookie("jwt", token, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      sameSite: "strict",
+      secure: ENV.NODE_ENV !== "development",
     });
 
     const userResponse = user.toObject();
@@ -144,5 +158,14 @@ export const updateProfile = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const checkAuth = (req, res) => {
+  try {
+    res.status(200).json(req.user);
+  } catch (error) {
+    console.log("Error in checkAuth controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };

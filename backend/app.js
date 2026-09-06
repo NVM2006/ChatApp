@@ -8,11 +8,12 @@ import authRoute from "./routes/authRoute.js";
 import messageRoute from "./routes/messageRoute.js";
 import { connectToDB } from "./lib/db.js";
 import conversationRoute from "./routes/conversationRoute.js";
+import cors from "cors";
 
 const app = express();
 
 app.use(express.json());
-
+app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
 app.use(errorMiddleware);
 
 app.use("/api/auth", authRoute);
