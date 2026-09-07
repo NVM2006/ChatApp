@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+/* eslint-disable no-unused-vars */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
-// import { useAuthStore } from '../store/useAuthStore'; // Mở comment này khi bạn tích hợp logic gọi API
+import { useAuthStore } from '../store/useAuthStore.js'; 
 
 function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,20 +12,19 @@ function SignUpPage() {
     password: '',
   });
 
-  // const { signup, isSigningUp } = useAuthStore(); // Lấy hàm signup từ store
+ const { signup, isSigningUp } = useAuthStore(); 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Dữ liệu đăng ký:", formData);
-    // signup(formData); // Gọi hàm gọi API đăng ký ở đây
+   signup(formData); 
   };
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Khối Glassmorphism (Kính mờ) */}
+   
       <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl">
         
-        {/* Header */}
+    
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-500 mb-2">
             Tạo tài khoản
@@ -32,10 +32,10 @@ function SignUpPage() {
           <p className="text-slate-400">Tham gia mạng lưới trò chuyện ngay hôm nay</p>
         </div>
 
-        {/* Form */}
+     
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* Input: Name */}
+         
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-300 ml-1">Họ và tên</label>
             <div className="relative">
@@ -53,7 +53,7 @@ function SignUpPage() {
             </div>
           </div>
 
-          {/* Input: Email */}
+       
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-300 ml-1">Email</label>
             <div className="relative">
@@ -71,7 +71,7 @@ function SignUpPage() {
             </div>
           </div>
 
-          {/* Input: Password */}
+  
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-300 ml-1">Mật khẩu</label>
             <div className="relative">
@@ -97,7 +97,7 @@ function SignUpPage() {
             </div>
           </div>
 
-          {/* Nút Submit */}
+   
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-pink-500 to-cyan-500 hover:from-pink-600 hover:to-cyan-600 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
@@ -108,7 +108,7 @@ function SignUpPage() {
 
         </form>
 
-        {/* Footer Link */}
+   
         <div className="mt-8 text-center text-sm text-slate-400">
           Đã có tài khoản?{' '}
           <Link to="/signin" className="text-cyan-400 hover:text-cyan-300 font-medium hover:underline transition-colors">

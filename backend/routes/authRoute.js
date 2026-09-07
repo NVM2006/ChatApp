@@ -13,9 +13,9 @@ const authRoute = Router();
 
 authRoute.use(arcjetMiddleware);
 
-authRoute.post("/sign-in", signin);
-authRoute.post("/sign-out", signout);
-authRoute.post("/sign-up", signup);
+authRoute.post("/signin", signin);
+authRoute.post("/signout", signout);
+authRoute.post("/signup", signup);
 authRoute.get("/check", checkAuth);
 
 authRoute.put("/update-profile", authMiddleware, updateProfile);

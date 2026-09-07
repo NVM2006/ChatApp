@@ -14,12 +14,12 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
-app.use(errorMiddleware);
 
 app.use("/api/auth", authRoute);
-app.use("/api/message", messageRoute);
+app.use("/api/messages", messageRoute);
 app.use("/api/conversation", conversationRoute);
 
+app.use(errorMiddleware);
 const ___dirname = path.resolve();
 const PORT = ENV.PORT || 5000;
 

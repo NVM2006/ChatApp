@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
-// import { useAuthStore } from '../store/useAuthStore'; // Mở comment khi ráp nối API
+import { useAuthStore } from '../store/useAuthStore.js'; 
 
 function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,20 +10,18 @@ function SignInPage() {
     password: '',
   });
 
-  // const { signin } = useAuthStore();
+  const { signin } = useAuthStore();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Dữ liệu đăng nhập:", formData);
-    // signin(formData);
+   signin(formData);
   };
 
   return (
     <div className="w-full max-w-md mx-auto">
-      {/* Khối Glassmorphism */}
       <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl">
         
-        {/* Header */}
+    
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-pink-500 mb-2">
             Đăng nhập
@@ -31,10 +29,8 @@ function SignInPage() {
           <p className="text-slate-400">Chào mừng bạn quay trở lại</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* Input: Email */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-300 ml-1">Email</label>
             <div className="relative">
@@ -52,7 +48,7 @@ function SignInPage() {
             </div>
           </div>
 
-          {/* Input: Password */}
+
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-300 ml-1">Mật khẩu</label>
             <div className="relative">
@@ -77,7 +73,7 @@ function SignInPage() {
             </div>
           </div>
 
-          {/* Nút Submit */}
+        
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-cyan-500 to-pink-500 hover:from-cyan-600 hover:to-pink-600 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg mt-4"
@@ -88,7 +84,7 @@ function SignInPage() {
 
         </form>
 
-        {/* Footer Link */}
+   
         <div className="mt-8 text-center text-sm text-slate-400">
           Chưa có tài khoản?{' '}
           <Link to="/signup" className="text-pink-400 hover:text-pink-300 font-medium hover:underline transition-colors">
