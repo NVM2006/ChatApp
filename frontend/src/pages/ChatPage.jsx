@@ -13,13 +13,26 @@ function ChatPage() {
     selectedUser, 
     setSelectedUser, 
     sendMessage,
-    isMessagesLoading
+    isMessagesLoading,
+    subscribeToMessages,
+    unsubscribeFromMessages
   } = useChatStore();
 
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef(null);
+  useEffect(() => {
+      // Nếu chưa chọn ai để chat thì không làm gì cả
+      if (!selectedUser) return;
 
+      // Bật công tắc lắng nghe tin nhắn của người này
+      subscribeToMessages();
+
+      // Cleanup function: Khi đổi sang người khác hoặc unmount, tắt lắng nghe người cũ
+      return () => {
+        unsubscribeFromMessages();
+      };
+  }, [selectedUser, subscribeToMessages, unsubscribeFromMessages]);
   useEffect(() => {
     getContacts();
   }, [getContacts]);

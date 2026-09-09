@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import express from "express";
 import { ENV } from "./lib/env.js";
+import { app, server } from "./lib/socket.js";
 
 import errorMiddleware from "./middleware/errorMiddleware.js";
 import path from "path";
@@ -9,8 +10,6 @@ import messageRoute from "./routes/messageRoute.js";
 import { connectToDB } from "./lib/db.js";
 import conversationRoute from "./routes/conversationRoute.js";
 import cors from "cors";
-
-const app = express();
 
 app.use(express.json());
 app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
@@ -26,12 +25,12 @@ const PORT = ENV.PORT || 5000;
 if (ENV.NODE_ENV === "production") {
   app.use(express.static(path.join(___dirname, "../frontend/dist")));
 
-  app.get("/", (req, res) => {
+  app.get("*", (req, res) => {
     res.sendFile(path.join(___dirname, "../frontend", "dist", "index.html"));
   });
 }
 
-const server = app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   connectToDB();
 });

@@ -1,6 +1,7 @@
 import Message from "../model/messageModel.js";
 import Conversation from "../model/conversationModel.js";
 import User from "../model/userModel.js";
+import { io, getReceiverSocketId } from "../lib/socket.js";
 
 export const getUsersForSidebar = async (req, res, next) => {
   try {
@@ -59,7 +60,10 @@ export const sendMessage = async (req, res, next) => {
       text,
       image,
     });
-
+    const receiverSocketId = getReceiverSocketId(partnerId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
     conversation.lastMessage = newMessage._id;
     await conversation.save();
 

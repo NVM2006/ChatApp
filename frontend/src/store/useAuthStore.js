@@ -1,17 +1,43 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
+import { io } from "socket.io-client";
 
-export const useAuthStore = create((set) => ({
+const BASE_URL =
+  import.meta.env.MODE === "development" ? "http://localhost:5000" : "/";
+
+export const useAuthStore = create((set, get) => ({
   authUser: null,
   isCheckingAuth: true,
   isSigningUp: false,
   isSigningIn: false,
+  socket: null,
+
+  connectSocket: () => {
+    const { authUser } = get();
+    if (!authUser || get().socket?.connected) return;
+
+    const socket = io(BASE_URL, {
+      query: {
+        userId: authUser._id,
+      },
+    });
+
+    socket.connect();
+    set({ socket });
+  },
+
+  disconnectSocket: () => {
+    if (get().socket?.connected) {
+      get().socket.disconnect();
+      set({ socket: null });
+    }
+  },
 
   checkAuth: async () => {
     try {
       const res = await axiosInstance.get("/auth/check");
-      // res.data là thông tin user trả về từ backend
       set({ authUser: res.data });
+      get().connectSocket();
     } catch (error) {
       console.log("Error in auth check: ", error);
       set({ authUser: null });
@@ -24,13 +50,9 @@ export const useAuthStore = create((set) => ({
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-
-      // 1. Lưu token vào LocalStorage
       localStorage.setItem("chat-token", res.data.data.token);
-
-      // 2. Cập nhật state người dùng
       set({ authUser: res.data.data.user });
-
+      get().connectSocket();
       console.log("Đăng ký thành công!");
     } catch (error) {
       console.log(
@@ -46,13 +68,9 @@ export const useAuthStore = create((set) => ({
     set({ isSigningIn: true });
     try {
       const res = await axiosInstance.post("/auth/signin", data);
-
-      // 1. Lưu token vào LocalStorage
       localStorage.setItem("chat-token", res.data.data.token);
-
-      // 2. Cập nhật state người dùng
       set({ authUser: res.data.data.user });
-
+      get().connectSocket();
       console.log("Đăng nhập thành công!");
     } catch (error) {
       console.log(
@@ -68,11 +86,9 @@ export const useAuthStore = create((set) => ({
     try {
       // Vẫn gọi API signout để Backend xóa Cookie (nếu bạn có dùng)
       await axiosInstance.post("/auth/signout");
-
-      // Xóa token ở Frontend
       localStorage.removeItem("chat-token");
       set({ authUser: null });
-
+      get().disconnectSocket();
       console.log("Đăng xuất thành công!");
     } catch (error) {
       console.log(
