@@ -9,7 +9,7 @@ export const signup = async (req, res, next) => {
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, publicKey } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: "All field are required" });
     }
@@ -40,6 +40,7 @@ export const signup = async (req, res, next) => {
           name,
           email,
           password: hashedPassword,
+          publicKey: publicKey || "",
         },
       ],
       { session },

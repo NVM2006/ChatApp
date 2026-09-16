@@ -14,8 +14,16 @@ const messageSchema = new mongoose.Schema(
     },
     text: {
       type: String,
-      trim: true,
-      maxlength: 2000,
+      required: true,
+    },
+    encryptedAesKey: {
+      type: String, // Lưu khóa AES đã bị bọc bởi RSA
+    },
+    iv: {
+      type: String, // Vector khởi tạo ngẫu nhiên của AES
+    },
+    shaHash: {
+      type: String, // Mã băm SHA-256 để kiểm tra toàn vẹn
     },
     image: {
       type: String,

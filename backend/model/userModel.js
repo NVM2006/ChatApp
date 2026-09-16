@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    publicKey: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true },
 );

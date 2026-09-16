@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.js";
 import { io } from "socket.io-client";
+import { E2EE } from "../lib/E2EE.js";
 
 const BASE_URL =
   import.meta.env.MODE === "development" ? "http://localhost:5000" : "/";
@@ -11,6 +12,7 @@ export const useAuthStore = create((set, get) => ({
   isSigningUp: false,
   isSigningIn: false,
   socket: null,
+  myPrivateKey: null,
 
   connectSocket: () => {
     const { authUser } = get();
@@ -37,6 +39,11 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get("/auth/check");
       set({ authUser: res.data });
+      const storedKey = localStorage.getItem("chat-private-key");
+      if (storedKey) {
+        const privKey = await E2EE.importPrivateKey(storedKey);
+        set({ myPrivateKey: privKey });
+      }
       get().connectSocket();
     } catch (error) {
       console.log("Error in auth check: ", error);
@@ -49,11 +56,23 @@ export const useAuthStore = create((set, get) => ({
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await axiosInstance.post("/auth/signup", data);
+      // [E2EE] 1. Tự động đúc 1 cặp khóa RSA
+      const keyPair = await E2EE.generateRSAKeyPair();
+      const pubKeyBase64 = await E2EE.exportPublicKey(keyPair.publicKey);
+      const privKeyBase64 = await E2EE.exportPrivateKey(keyPair.privateKey);
+
+      // [E2EE] 2. Lưu Private Key an toàn ở LocalStorage (Không bao giờ gửi lên Server)
+      localStorage.setItem("chat-private-key", privKeyBase64);
+      set({ myPrivateKey: keyPair.privateKey });
+
+      // [E2EE] 3. Gắn Public Key vào data để gửi lên Server
+      const payload = { ...data, publicKey: pubKeyBase64 };
+
+      const res = await axiosInstance.post("/auth/signup", payload);
       localStorage.setItem("chat-token", res.data.data.token);
       set({ authUser: res.data.data.user });
+
       get().connectSocket();
-      console.log("Đăng ký thành công!");
     } catch (error) {
       console.log(
         "Lỗi đăng ký:",
@@ -70,6 +89,11 @@ export const useAuthStore = create((set, get) => ({
       const res = await axiosInstance.post("/auth/signin", data);
       localStorage.setItem("chat-token", res.data.data.token);
       set({ authUser: res.data.data.user });
+      const storedKey = localStorage.getItem("chat-private-key");
+      if (storedKey) {
+        const privKey = await E2EE.importPrivateKey(storedKey);
+        set({ myPrivateKey: privKey });
+      }
       get().connectSocket();
       console.log("Đăng nhập thành công!");
     } catch (error) {
@@ -87,7 +111,9 @@ export const useAuthStore = create((set, get) => ({
       // Vẫn gọi API signout để Backend xóa Cookie (nếu bạn có dùng)
       await axiosInstance.post("/auth/signout");
       localStorage.removeItem("chat-token");
-      set({ authUser: null });
+      // [QUAN TRỌNG] Xóa Private Key khi đăng xuất để bảo mật
+      localStorage.removeItem("chat-private-key");
+      set({ authUser: null, myPrivateKey: null });
       get().disconnectSocket();
       console.log("Đăng xuất thành công!");
     } catch (error) {
