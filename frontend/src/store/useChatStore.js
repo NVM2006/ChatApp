@@ -34,20 +34,34 @@ export const useChatStore = create((set, get) => ({
       // [E2EE] GIẢI MÃ TOÀN BỘ TIN NHẮN TẢI VỀ
       const decryptedMessages = await Promise.all(
         rawMessages.map(async (msg) => {
-          // 1. Nếu đây là tin nhắn do MÌNH gửi đi:
-          // Vì nó được mã hóa bằng Public Key của người nhận, nên Private Key của mình KHÔNG THỂ mở được.
-          if (msg.senderId === authUser._id && msg.encryptedAesKey) {
-            return { ...msg, text: "[Tin nhắn bạn đã gửi - Mã hóa E2EE]" };
+          const isMe = msg.senderId === authUser._id;
+
+          // 1. Nếu tin mình gửi VÀ CÓ CHÌA KHÓA DỰ PHÒNG cho người gửi
+          if (isMe && msg.senderEncryptedAesKey && myPrivateKey) {
+            // Tráo chìa khóa gửi sang hàm giải mã
+            const fakeMsgObj = {
+              ...msg,
+              encryptedAesKey: msg.senderEncryptedAesKey,
+            };
+            const plainText = await E2EE.decryptMessage(
+              fakeMsgObj,
+              myPrivateKey,
+            );
+            return { ...msg, text: plainText };
           }
 
-          // 2. Nếu đây là tin nhắn NGƯỜI KHÁC gửi cho mình:
-          // Dùng Private Key của mình để giải mã
-          if (msg.encryptedAesKey && myPrivateKey) {
+          // 2. Nếu tin mình gửi NHƯNG LÀ TIN CŨ (lúc nãy test chưa có chìa khóa dự phòng)
+          if (isMe && msg.encryptedAesKey && !msg.senderEncryptedAesKey) {
+            return { ...msg, text: "🔒 [Tin nhắn cũ không thể giải mã]" };
+          }
+
+          // 3. Nếu đây là tin nhắn NGƯỜI KHÁC gửi cho mình
+          if (!isMe && msg.encryptedAesKey && myPrivateKey) {
             const plainText = await E2EE.decryptMessage(msg, myPrivateKey);
             return { ...msg, text: plainText };
           }
 
-          // 3. Tin nhắn cũ (chưa áp dụng mã hóa)
+          // 4. Tin nhắn chưa áp dụng mã hóa
           return msg;
         }),
       );
@@ -68,10 +82,14 @@ export const useChatStore = create((set, get) => ({
 
       // [E2EE] MÃ HÓA TIN NHẮN TRƯỚC KHI GỬI
       if (selectedUser.publicKey) {
-        // Dùng Public Key của người nhận để mã hóa
+        // Lấy thông tin user của mình từ AuthStore
+        const { authUser } = useAuthStore.getState();
+
+        // Truyền thêm authUser.publicKey vào hàm mã hóa
         const encryptedData = await E2EE.encryptMessage(
           messageData.text,
           selectedUser.publicKey,
+          authUser.publicKey,
         );
         payloadToSend = { ...payloadToSend, ...encryptedData };
       }

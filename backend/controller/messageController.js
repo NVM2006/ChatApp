@@ -43,7 +43,8 @@ export const sendMessage = async (req, res, next) => {
   try {
     const currentUserId = req.user._id;
     const partnerId = req.params.partnerId;
-    const { text, image, encryptedAesKey, iv, shaHash } = req.body;
+    const { text, image, encryptedAesKey, senderEncryptedAesKey, iv, shaHash } =
+      req.body;
 
     let conversation = await Conversation.findOne({
       participants: { $all: [currentUserId, partnerId] },
@@ -60,6 +61,7 @@ export const sendMessage = async (req, res, next) => {
       text,
       image,
       encryptedAesKey,
+      senderEncryptedAesKey,
       iv,
       shaHash,
     });

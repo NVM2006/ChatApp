@@ -61,18 +61,18 @@ export const E2EE = {
   // ==========================================
   // 3. QUY TRÌNH GỬI (MÃ HÓA = AES + RSA + SHA)
   // ==========================================
-  encryptMessage: async (plainText, receiverPublicKeyBase64) => {
-    // Bước 1: Hash SHA-256 tin nhắn gốc
+  encryptMessage: async (
+    plainText,
+    receiverPublicKeyBase64,
+    myPublicKeyBase64,
+  ) => {
     const shaHash = await E2EE.hashSHA256(plainText);
-
-    // Bước 2: Sinh khóa AES ngẫu nhiên
     const aesKey = await window.crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"],
     );
 
-    // Bước 3: Mã hóa nội dung bằng AES
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encodedText = new TextEncoder().encode(plainText);
     const cipherBuffer = await window.crypto.subtle.encrypt(
@@ -80,9 +80,9 @@ export const E2EE = {
       aesKey,
       encodedText,
     );
-
-    // Bước 4: Mã hóa cái khóa AES đó bằng RSA Public Key của người nhận
     const rawAesKey = await window.crypto.subtle.exportKey("raw", aesKey);
+
+    // 1. Mã hóa khóa AES cho người nhận
     const receiverPubKey = await E2EE.importPublicKey(receiverPublicKeyBase64);
     const encryptedAesBuffer = await window.crypto.subtle.encrypt(
       { name: "RSA-OAEP" },
@@ -90,11 +90,25 @@ export const E2EE = {
       rawAesKey,
     );
 
+    // 2. Mã hóa khóa AES cho chính mình (để xem lại)
+    let senderEncryptedAesBuffer = null;
+    if (myPublicKeyBase64) {
+      const myPubKey = await E2EE.importPublicKey(myPublicKeyBase64);
+      senderEncryptedAesBuffer = await window.crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        myPubKey,
+        rawAesKey,
+      );
+    }
+
     return {
       text: buf2base64(cipherBuffer),
       encryptedAesKey: buf2base64(encryptedAesBuffer),
+      senderEncryptedAesKey: senderEncryptedAesBuffer
+        ? buf2base64(senderEncryptedAesBuffer)
+        : "",
       iv: buf2base64(iv),
-      shaHash: shaHash, // Gửi kèm mã băm
+      shaHash: shaHash,
     };
   },
 

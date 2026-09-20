@@ -19,6 +19,9 @@ const messageSchema = new mongoose.Schema(
     encryptedAesKey: {
       type: String, // Lưu khóa AES đã bị bọc bởi RSA
     },
+    senderEncryptedAesKey: {
+      type: String, // THÊM DÒNG NÀY: Khóa dành cho người gửi tự xem lại
+    },
     iv: {
       type: String, // Vector khởi tạo ngẫu nhiên của AES
     },
