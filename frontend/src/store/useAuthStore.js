@@ -16,12 +16,18 @@ export const useAuthStore = create((set, get) => ({
 
   connectSocket: () => {
     const { authUser } = get();
+    // Nếu chưa đăng nhập hoặc socket đã kết nối rồi thì không tạo thêm
     if (!authUser || get().socket?.connected) return;
 
     const socket = io(BASE_URL, {
       query: {
         userId: authUser._id,
       },
+      // THÊM ĐOẠN CẤU HÌNH NÀY ĐỂ TRỊ LỖI CỦA RENDER FREE:
+      transports: ["websocket"], // Ép buộc dùng chuẩn WebSocket nhanh nhất, cấm lùi về Long-Polling
+      reconnection: true, // Cho phép tự động kết nối lại khi bị Render ngắt
+      reconnectionAttempts: 15, // Cố gắng kết nối lại tối đa 15 lần
+      reconnectionDelay: 2000, // Mỗi lần thử cách nhau 2 giây
     });
 
     socket.connect();
