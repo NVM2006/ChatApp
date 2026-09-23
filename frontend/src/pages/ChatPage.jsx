@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, Smile, LogOut, MessageSquare, Loader } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, Smile, LogOut, MessageSquare, Loader, X } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useChatStore } from '../store/useChatStore'; 
+
 
 function ChatPage() {
   const { signout, authUser } = useAuthStore();
@@ -17,6 +18,9 @@ function ChatPage() {
     subscribeToMessages,
     unsubscribeFromMessages
   } = useChatStore();
+
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,17 +58,37 @@ function ChatPage() {
     (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Kiểm tra dung lượng (giới hạn 5MB cho nhẹ)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      setImagePreview(reader.result); // Lưu chuỗi Base64 vào state
+    };
+  };
+
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!messageInput.trim() || !selectedUser) return;
+    if (!messageInput.trim() && !imagePreview) return; // Nếu không có chữ VÀ không có ảnh thì chặn
 
     sendMessage({
       receiverId: selectedUser._id,
-      text: messageInput
+      text: messageInput.trim(),
+      image: imagePreview // Gửi chuỗi Base64 của ảnh đi
     });
     
-
+    // Reset lại form sau khi gửi
     setMessageInput('');
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -180,14 +204,27 @@ function ChatPage() {
                 messages.map((msg, idx) => {
                   const isMe = msg.senderId === authUser._id;
                   return (
+                    // THÊM LẠI THẺ DIV NÀY ĐỂ CĂN LỀ TRÁI/PHẢI VÀ ÔM VỪA NỘI DUNG:
                     <div key={msg._id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      
+                      {/* Thẻ bong bóng chat của bạn đưa vào bên trong */}
                       <div className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-lg ${
                         isMe 
                           ? 'bg-gradient-to-br from-cyan-600 to-pink-600 text-white rounded-tr-sm' 
                           : 'bg-slate-700/80 border border-slate-600/50 text-slate-200 rounded-tl-sm backdrop-blur-sm'
                       }`}>
-                        <p className="leading-relaxed break-words">{msg.text}</p>
+                        {/* NẾU CÓ ẢNH, HIỂN THỊ ẢNH TRƯỚC */}
+                        {msg.image && (
+                          <img 
+                            src={msg.image} 
+                            alt="attachment" 
+                            className="max-w-[200px] sm:max-w-[250px] rounded-lg mb-2 object-cover"
+                          />
+                        )}
+                        {/* NẾU CÓ CHỮ, HIỂN THỊ CHỮ */}
+                        {msg.text && <p className="leading-relaxed break-words">{msg.text}</p>}
                       </div>
+                      
                     </div>
                   );
                 })
@@ -197,30 +234,67 @@ function ChatPage() {
             </div>
 
             
-            <form onSubmit={handleSendMessage} className="p-4 bg-slate-800/40 border-t border-slate-700/50 flex items-center gap-3 relative backdrop-blur-md z-10">
-              <button type="button" className="p-2 text-slate-400 hover:text-cyan-400 transition-colors">
-                <ImageIcon className="size-5" />
-              </button>
-              <div className="flex-1 relative">
-                <input 
-                  type="text" 
-                  placeholder="Nhập tin nhắn..." 
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-slate-900/60 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:bg-slate-800 transition-all shadow-inner"
-                />
-                <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-400 transition-colors">
-                  <Smile className="size-5" />
-                </button>
+            {/* KHU VỰC NHẬP TIN NHẮN */}
+              <div className="bg-slate-800/40 border-t border-slate-700/50 relative backdrop-blur-md z-10 flex flex-col">
+                
+                {/* KHUNG PREVIEW ẢNH (Hiển thị khi bạn vừa chọn ảnh xong) */}
+                {imagePreview && (
+                  <div className="p-4 flex items-center gap-4 border-b border-slate-700/50">
+                    <div className="relative">
+                      <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-600" />
+                      <button
+                        onClick={() => {
+                          setImagePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        className="absolute -top-2 -right-2 bg-slate-800 text-slate-300 rounded-full p-1 border border-slate-600 hover:text-red-400"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleSendMessage} className="p-4 flex items-center gap-3">
+                  {/* NÚT CHỌN ẢNH (Kích hoạt input file ẩn) */}
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`p-2 transition-colors ${imagePreview ? "text-cyan-400" : "text-slate-400 hover:text-cyan-400"}`}
+                  >
+                    <ImageIcon className="size-5" />
+                  </button>
+                  
+                  {/* INPUT FILE ẨN */}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef} 
+                    onChange={handleImageChange} 
+                  />
+
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      placeholder="Nhập tin nhắn..." 
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 bg-slate-900/60 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:bg-slate-800 transition-all shadow-inner"
+                    />
+                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-400 transition-colors">
+                      <Smile className="size-5" />
+                    </button>
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={!messageInput.trim() && !imagePreview}
+                    className="p-3 bg-gradient-to-r from-cyan-500 to-pink-500 rounded-full text-white hover:scale-105 active:scale-95 transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <Send className="size-5 ml-0.5" />
+                  </button>
+                </form>
               </div>
-              <button 
-                type="submit" 
-                disabled={!messageInput.trim()}
-                className="p-3 bg-gradient-to-r from-cyan-500 to-pink-500 rounded-full text-white hover:scale-105 active:scale-95 transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                <Send className="size-5 ml-0.5" />
-              </button>
-            </form>
           </>
         )}
       </div>

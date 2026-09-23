@@ -66,7 +66,10 @@ export const E2EE = {
     receiverPublicKeyBase64,
     myPublicKeyBase64,
   ) => {
+    //Tạo mã băm để kiểm tra tính toàn vẹn
     const shaHash = await E2EE.hashSHA256(plainText);
+
+    //tạo chìa khoa session ngẫu nhiên (AES-256)
     const aesKey = await window.crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
@@ -75,6 +78,8 @@ export const E2EE = {
 
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encodedText = new TextEncoder().encode(plainText);
+
+    //Mã hóa nội dung lại thành cypher text bằng khóa AES
     const cipherBuffer = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv: iv },
       aesKey,
@@ -82,7 +87,7 @@ export const E2EE = {
     );
     const rawAesKey = await window.crypto.subtle.exportKey("raw", aesKey);
 
-    // 1. Mã hóa khóa AES cho người nhận
+    //Mã hóa khóa AES cho người nhận (sử dụng publickey của người nhận để mã hóa)
     const receiverPubKey = await E2EE.importPublicKey(receiverPublicKeyBase64);
     const encryptedAesBuffer = await window.crypto.subtle.encrypt(
       { name: "RSA-OAEP" },
@@ -90,7 +95,12 @@ export const E2EE = {
       rawAesKey,
     );
 
-    // 2. Mã hóa khóa AES cho chính mình (để xem lại)
+    /*
+    Vì thuật toán RSA sử dụng private key của người nhận để giải mã tin nhắn nên người gửi sẽ không thể đọc lại tin nhắn 
+    nên cta sử dụng cả public key của mình để mã hóa nó để có thể đọc lại tin nhắn => mô hình đa ổ khóa
+     */
+
+    //Mã hóa khóa AES cho chính mình (để xem lại)
     let senderEncryptedAesBuffer = null;
     if (myPublicKeyBase64) {
       const myPubKey = await E2EE.importPublicKey(myPublicKeyBase64);
@@ -119,7 +129,7 @@ export const E2EE = {
     try {
       if (!encryptedPayload.encryptedAesKey) return encryptedPayload.text; // Bỏ qua nếu là tin nhắn cũ (chưa mã hóa)
 
-      // Bước 1: Dùng RSA Private Key giải mã khóa AES
+      //Dùng chính private key của mình để giải mã khóa AES
       const decryptedAesRaw = await window.crypto.subtle.decrypt(
         { name: "RSA-OAEP" },
         myPrivateKey,
@@ -133,7 +143,7 @@ export const E2EE = {
         ["encrypt", "decrypt"],
       );
 
-      // Bước 2: Dùng khóa AES giải mã nội dung
+      //Dùng khóa AES vừa giải được để giải mã nội dung
       const decryptedBuffer = await window.crypto.subtle.decrypt(
         { name: "AES-GCM", iv: base642buf(encryptedPayload.iv) },
         aesKey,
@@ -141,7 +151,7 @@ export const E2EE = {
       );
       const plainText = new TextDecoder().decode(decryptedBuffer);
 
-      // Bước 3: Băm SHA-256 lại nội dung vừa giải mã và so sánh
+      //Băm SHA-256 lại nội dung vừa giải mã và so sánh (kiểm tra tính toàn vẹn)
       const verifyHash = await E2EE.hashSHA256(plainText);
       if (verifyHash !== encryptedPayload.shaHash) {
         return "⚠️ [CẢNH BÁO: Tin nhắn đã bị thay đổi trên đường truyền!]";
@@ -149,7 +159,7 @@ export const E2EE = {
 
       return plainText;
     } catch (error) {
-      return "🔒 [Lỗi giải mã E2EE]";
+      return "[Lỗi giải mã E2EE]";
     }
   },
 };

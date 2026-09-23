@@ -3,6 +3,16 @@ import { axiosInstance } from "../lib/axios.js";
 import { useAuthStore } from "./useAuthStore.js";
 import { E2EE } from "../lib/E2EE.js";
 
+//Dùng để tách "Chữ" và "Ảnh" ra sau khi giải mã E2EE thành công
+const parseDecryptedPayload = (decryptedString, originalImage) => {
+  // Thử giải nén JSON (nếu tin nhắn có chứa cả chữ và ảnh)
+  const parsed = JSON.parse(decryptedString);
+  if (parsed.text !== undefined || parsed.image !== undefined) {
+    return { text: parsed.text, image: parsed.image };
+  }
+  return { text: decryptedString, image: originalImage };
+};
+
 export const useChatStore = create((set, get) => ({
   messages: [],
   contacts: [],
@@ -35,34 +45,43 @@ export const useChatStore = create((set, get) => ({
       const decryptedMessages = await Promise.all(
         rawMessages.map(async (msg) => {
           const isMe = msg.senderId === authUser._id;
+          let plainText = msg.text;
+          let finalImage = msg.image;
 
-          // 1. Nếu tin mình gửi VÀ CÓ CHÌA KHÓA DỰ PHÒNG cho người gửi
+          // 1. Giải mã tin nhắn do MÌNH gửi đi
           if (isMe && msg.senderEncryptedAesKey && myPrivateKey) {
-            // Tráo chìa khóa gửi sang hàm giải mã
             const fakeMsgObj = {
               ...msg,
               encryptedAesKey: msg.senderEncryptedAesKey,
             };
-            const plainText = await E2EE.decryptMessage(
+            const decryptedString = await E2EE.decryptMessage(
               fakeMsgObj,
               myPrivateKey,
             );
-            return { ...msg, text: plainText };
+
+            // Tách dữ liệu
+            const parsed = parseDecryptedPayload(decryptedString, msg.image);
+            plainText = parsed.text;
+            finalImage = parsed.image;
+          }
+          // 2. Tin nhắn cũ (bị mất chìa)
+          else if (isMe && msg.encryptedAesKey && !msg.senderEncryptedAesKey) {
+            plainText = "🔒 [Tin nhắn cũ không thể giải mã]";
+          }
+          // 3. Giải mã tin nhắn NGƯỜI KHÁC gửi cho mình
+          else if (!isMe && msg.encryptedAesKey && myPrivateKey) {
+            const decryptedString = await E2EE.decryptMessage(
+              msg,
+              myPrivateKey,
+            );
+
+            // Tách dữ liệu
+            const parsed = parseDecryptedPayload(decryptedString, msg.image);
+            plainText = parsed.text;
+            finalImage = parsed.image;
           }
 
-          // 2. Nếu tin mình gửi NHƯNG LÀ TIN CŨ (lúc nãy test chưa có chìa khóa dự phòng)
-          if (isMe && msg.encryptedAesKey && !msg.senderEncryptedAesKey) {
-            return { ...msg, text: "🔒 [Tin nhắn cũ không thể giải mã]" };
-          }
-
-          // 3. Nếu đây là tin nhắn NGƯỜI KHÁC gửi cho mình
-          if (!isMe && msg.encryptedAesKey && myPrivateKey) {
-            const plainText = await E2EE.decryptMessage(msg, myPrivateKey);
-            return { ...msg, text: plainText };
-          }
-
-          // 4. Tin nhắn chưa áp dụng mã hóa
-          return msg;
+          return { ...msg, text: plainText, image: finalImage };
         }),
       );
 
@@ -73,40 +92,54 @@ export const useChatStore = create((set, get) => ({
       set({ isMessagesLoading: false });
     }
   },
+
   sendMessage: async (messageData) => {
     try {
       const { messages, selectedUser } = get();
-
-      // Khởi tạo Payload mặc định
       let payloadToSend = { text: messageData.text, image: messageData.image };
 
-      // [E2EE] MÃ HÓA TIN NHẮN TRƯỚC KHI GỬI
+      // [E2EE] MÃ HÓA TIN NHẮN & HÌNH ẢNH TRƯỚC KHI GỬI
       if (selectedUser.publicKey) {
-        // Lấy thông tin user của mình từ AuthStore
         const { authUser } = useAuthStore.getState();
 
-        // Truyền thêm authUser.publicKey vào hàm mã hóa
+        // [QUAN TRỌNG] Đóng gói cả Chữ và Ảnh vào chung 1 chuỗi JSON
+        const combinedPayload = JSON.stringify({
+          text: messageData.text || "",
+          image: messageData.image || "",
+        });
+
+        // Bắt đầu đem toàn bộ cục JSON đó đi mã hóa
         const encryptedData = await E2EE.encryptMessage(
-          messageData.text,
+          combinedPayload,
           selectedUser.publicKey,
           authUser.publicKey,
         );
-        payloadToSend = { ...payloadToSend, ...encryptedData };
+
+        // Ghi đè Payload gửi lên Server:
+        // Ẩn toàn bộ ảnh đi (để trống), vì lúc này ảnh đã bị mã hóa nén hết vào trường 'text'
+        payloadToSend = {
+          ...encryptedData,
+          image: "",
+        };
       }
 
-      // Gửi mớ dữ liệu hỗn độn (đã mã hóa) lên Server
       const res = await axiosInstance.post(
         `/messages/send/${messageData.receiverId}`,
         payloadToSend,
       );
 
-      // Hiển thị tạm thời tin nhắn GỐC lên màn hình của người gửi để họ đọc được
-      const newMessageForMe = { ...res.data, text: messageData.text };
+      // Hiển thị tạm thời tin nhắn GỐC lên màn hình của người gửi
+      const newMessageForMe = {
+        ...res.data,
+        text: messageData.text,
+        image: messageData.image,
+      };
       set({ messages: [...messages, newMessageForMe] });
     } catch (error) {
       console.log("Lỗi gửi tin nhắn:", error);
     }
   },
+
   subscribeToMessages: () => {
     const { selectedUser } = get();
     if (!selectedUser) return;
@@ -117,13 +150,30 @@ export const useChatStore = create((set, get) => ({
       if (newMessage.senderId === selectedUser._id) {
         const { myPrivateKey } = useAuthStore.getState();
 
-        // [E2EE] GIẢI MÃ TIN NHẮN REAL-TIME VỪA NHẬN ĐƯỢC
+        // [E2EE] GIẢI MÃ TIN NHẮN REAL-TIME
         let plainText = newMessage.text;
+        let finalImage = newMessage.image;
+
         if (newMessage.encryptedAesKey && myPrivateKey) {
-          plainText = await E2EE.decryptMessage(newMessage, myPrivateKey);
+          const decryptedString = await E2EE.decryptMessage(
+            newMessage,
+            myPrivateKey,
+          );
+
+          // Tách dữ liệu chữ và ảnh ra
+          const parsed = parseDecryptedPayload(
+            decryptedString,
+            newMessage.image,
+          );
+          plainText = parsed.text;
+          finalImage = parsed.image;
         }
 
-        const decryptedMessage = { ...newMessage, text: plainText };
+        const decryptedMessage = {
+          ...newMessage,
+          text: plainText,
+          image: finalImage,
+        };
         set({ messages: [...get().messages, decryptedMessage] });
       }
     });
