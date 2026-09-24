@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Send, Image as ImageIcon, Smile, LogOut, MessageSquare, Loader, X } from 'lucide-react';
+import { Search, Send, Image as ImageIcon, Smile, LogOut, MessageSquare, Loader, X, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { useChatStore } from '../store/useChatStore'; 
-
 
 function ChatPage() {
   const { signout, authUser } = useAuthStore();
@@ -21,22 +20,18 @@ function ChatPage() {
 
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
-
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef(null);
+
   useEffect(() => {
-      // Nếu chưa chọn ai để chat thì không làm gì cả
       if (!selectedUser) return;
-
-      // Bật công tắc lắng nghe tin nhắn của người này
       subscribeToMessages();
-
-      // Cleanup function: Khi đổi sang người khác hoặc unmount, tắt lắng nghe người cũ
       return () => {
         unsubscribeFromMessages();
       };
   }, [selectedUser, subscribeToMessages, unsubscribeFromMessages]);
+
   useEffect(() => {
     getContacts();
   }, [getContacts]);
@@ -62,7 +57,6 @@ function ChatPage() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Kiểm tra dung lượng (giới hạn 5MB cho nhẹ)
     if (file.size > 5 * 1024 * 1024) {
       alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
       return;
@@ -71,33 +65,32 @@ function ChatPage() {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      setImagePreview(reader.result); // Lưu chuỗi Base64 vào state
+      setImagePreview(reader.result);
     };
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!messageInput.trim() && !imagePreview) return; // Nếu không có chữ VÀ không có ảnh thì chặn
+    if (!messageInput.trim() && !imagePreview) return;
 
     sendMessage({
       receiverId: selectedUser._id,
       text: messageInput.trim(),
-      image: imagePreview // Gửi chuỗi Base64 của ảnh đi
+      image: imagePreview
     });
     
-    // Reset lại form sau khi gửi
     setMessageInput('');
     setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
-    <div className="w-full max-w-6xl h-[90vh] flex bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-3xl shadow-2xl overflow-hidden">
+    <div className="w-full max-w-6xl h-[100dvh] md:h-[90vh] flex bg-slate-800/40 backdrop-blur-xl md:border border-slate-700/50 md:rounded-3xl shadow-2xl overflow-hidden">
       
-  
-      <div className="w-80 flex flex-col border-r border-slate-700/50 bg-slate-900/20">
-        
-
+      {/* CỘT TRÁI: DANH SÁCH BẠN BÈ (Ẩn trên mobile nếu đã chọn người chat) */}
+      <div className={`flex flex-col border-r border-slate-700/50 bg-slate-900/20 transition-all ${
+        selectedUser ? 'hidden md:flex md:w-80' : 'w-full md:w-80 flex'
+      }`}>
         <div className="p-4 flex items-center justify-between border-b border-slate-700/50">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-gradient-to-br from-pink-500 to-cyan-500 rounded-xl shadow-lg">
@@ -116,7 +109,6 @@ function ChatPage() {
           </button>
         </div>
 
-   
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
@@ -129,7 +121,6 @@ function ChatPage() {
             />
           </div>
         </div>
-
 
         <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-1 custom-scrollbar">
           {filteredContacts.length === 0 ? (
@@ -161,8 +152,10 @@ function ChatPage() {
         </div>
       </div>
 
-
-      <div className="flex-1 flex flex-col relative bg-slate-900/10">
+      {/* CỘT PHẢI: KHUNG CHAT (Ẩn trên mobile nếu chưa chọn người chat) */}
+      <div className={`flex-1 flex flex-col relative bg-slate-900/10 ${
+        !selectedUser ? 'hidden md:flex' : 'flex'
+      }`}>
         {!selectedUser ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
             <div className="p-6 bg-slate-800/30 rounded-full mb-4 shadow-inner">
@@ -172,26 +165,31 @@ function ChatPage() {
             <p className="text-sm">Chọn một cuộc hội thoại bên trái để bắt đầu</p>
           </div>
         ) : (
-          
           <>
-            
-            <div className="px-6 py-4 border-b border-slate-700/50 bg-slate-800/40 backdrop-blur-md flex items-center justify-between z-10">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-md">
+            <div className="px-4 md:px-6 py-4 border-b border-slate-700/50 bg-slate-800/40 backdrop-blur-md flex items-center justify-between z-10">
+              <div className="flex items-center gap-2 md:gap-3">
+                {/* NÚT QUAY LẠI (Chỉ hiện trên điện thoại) */}
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="md:hidden p-2 -ml-2 text-slate-400 hover:text-cyan-400 transition-colors"
+                >
+                  <ArrowLeft className="size-6" />
+                </button>
+
+                <div className="size-9 md:size-10 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-md shrink-0">
                   {selectedUser.name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h2 className="font-semibold text-white">{selectedUser.name}</h2>
+                <div className="min-w-0">
+                  <h2 className="font-semibold text-white truncate">{selectedUser.name}</h2>
                   <p className="text-xs text-cyan-400 flex items-center gap-1">
-                    <span className="size-1.5 rounded-full bg-green-500 block"></span>
-                    Đang hoạt động
+                    <span className="size-1.5 rounded-full bg-green-500 block shrink-0"></span>
+                    <span className="truncate">Đang hoạt động</span>
                   </p>
                 </div>
               </div>
             </div>
 
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar flex flex-col">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar flex flex-col">
               {isMessagesLoading ? (
                 <div className="flex-1 flex justify-center items-center">
                   <Loader className="size-8 animate-spin text-cyan-500" />
@@ -204,16 +202,12 @@ function ChatPage() {
                 messages.map((msg, idx) => {
                   const isMe = msg.senderId === authUser._id;
                   return (
-                    // THÊM LẠI THẺ DIV NÀY ĐỂ CĂN LỀ TRÁI/PHẢI VÀ ÔM VỪA NỘI DUNG:
                     <div key={msg._id || idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      
-                      {/* Thẻ bong bóng chat của bạn đưa vào bên trong */}
-                      <div className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-lg ${
+                      <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 md:px-5 py-2 md:py-3 shadow-lg ${
                         isMe 
                           ? 'bg-gradient-to-br from-cyan-600 to-pink-600 text-white rounded-tr-sm' 
                           : 'bg-slate-700/80 border border-slate-600/50 text-slate-200 rounded-tl-sm backdrop-blur-sm'
                       }`}>
-                        {/* NẾU CÓ ẢNH, HIỂN THỊ ẢNH TRƯỚC */}
                         {msg.image && (
                           <img 
                             src={msg.image} 
@@ -221,80 +215,71 @@ function ChatPage() {
                             className="max-w-[200px] sm:max-w-[250px] rounded-lg mb-2 object-cover"
                           />
                         )}
-                        {/* NẾU CÓ CHỮ, HIỂN THỊ CHỮ */}
-                        {msg.text && <p className="leading-relaxed break-words">{msg.text}</p>}
+                        {msg.text && <p className="leading-relaxed break-words text-sm md:text-base">{msg.text}</p>}
                       </div>
-                      
                     </div>
                   );
                 })
               )}
-              
               <div ref={messagesEndRef} />
             </div>
-
             
-            {/* KHU VỰC NHẬP TIN NHẮN */}
-              <div className="bg-slate-800/40 border-t border-slate-700/50 relative backdrop-blur-md z-10 flex flex-col">
-                
-                {/* KHUNG PREVIEW ẢNH (Hiển thị khi bạn vừa chọn ảnh xong) */}
-                {imagePreview && (
-                  <div className="p-4 flex items-center gap-4 border-b border-slate-700/50">
-                    <div className="relative">
-                      <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-600" />
-                      <button
-                        onClick={() => {
-                          setImagePreview(null);
-                          if (fileInputRef.current) fileInputRef.current.value = "";
-                        }}
-                        className="absolute -top-2 -right-2 bg-slate-800 text-slate-300 rounded-full p-1 border border-slate-600 hover:text-red-400"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={handleSendMessage} className="p-4 flex items-center gap-3">
-                  {/* NÚT CHỌN ẢNH (Kích hoạt input file ẩn) */}
-                  <button 
-                    type="button" 
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`p-2 transition-colors ${imagePreview ? "text-cyan-400" : "text-slate-400 hover:text-cyan-400"}`}
-                  >
-                    <ImageIcon className="size-5" />
-                  </button>
-                  
-                  {/* INPUT FILE ẨN */}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    ref={fileInputRef} 
-                    onChange={handleImageChange} 
-                  />
-
-                  <div className="flex-1 relative">
-                    <input 
-                      type="text" 
-                      placeholder="Nhập tin nhắn..." 
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      className="w-full pl-4 pr-10 py-3 bg-slate-900/60 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:bg-slate-800 transition-all shadow-inner"
-                    />
-                    <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-400 transition-colors">
-                      <Smile className="size-5" />
+            <div className="bg-slate-800/40 border-t border-slate-700/50 relative backdrop-blur-md z-10 flex flex-col">
+              {imagePreview && (
+                <div className="p-4 flex items-center gap-4 border-b border-slate-700/50">
+                  <div className="relative">
+                    <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-600" />
+                    <button
+                      onClick={() => {
+                        setImagePreview(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                      className="absolute -top-2 -right-2 bg-slate-800 text-slate-300 rounded-full p-1 border border-slate-600 hover:text-red-400"
+                    >
+                      <X className="size-4" />
                     </button>
                   </div>
-                  <button 
-                    type="submit" 
-                    disabled={!messageInput.trim() && !imagePreview}
-                    className="p-3 bg-gradient-to-r from-cyan-500 to-pink-500 rounded-full text-white hover:scale-105 active:scale-95 transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                  >
-                    <Send className="size-5 ml-0.5" />
+                </div>
+              )}
+
+              <form onSubmit={handleSendMessage} className="p-2 md:p-4 flex items-center gap-2 md:gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`p-2 transition-colors ${imagePreview ? "text-cyan-400" : "text-slate-400 hover:text-cyan-400"}`}
+                >
+                  <ImageIcon className="size-5 md:size-6" />
+                </button>
+                
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleImageChange} 
+                />
+
+                <div className="flex-1 relative">
+                  <input 
+                    type="text" 
+                    placeholder="Nhập tin nhắn..." 
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    className="w-full pl-4 pr-10 py-2.5 md:py-3 bg-slate-900/60 border border-slate-600/50 rounded-full text-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:bg-slate-800 transition-all shadow-inner text-sm md:text-base"
+                  />
+                  <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-400 transition-colors">
+                    <Smile className="size-5 md:size-6" />
                   </button>
-                </form>
-              </div>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={!messageInput.trim() && !imagePreview}
+                  className="p-2.5 md:p-3 bg-gradient-to-r from-cyan-500 to-pink-500 rounded-full text-white hover:scale-105 active:scale-95 transition-transform shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  <Send className="size-5 ml-0.5" />
+                </button>
+              </form>
+            </div>
           </>
         )}
       </div>
